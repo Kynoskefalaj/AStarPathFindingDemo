@@ -1,5 +1,6 @@
 import javax.swing.*;
 import java.awt.*;
+import java.util.ArrayList;
 
 public class DemoPanel extends JPanel {
 
@@ -13,6 +14,12 @@ public class DemoPanel extends JPanel {
     // NODE
     Node[][] node = new Node[maxCol][maxRow];
     Node startNode, goalNode, currentNode;
+    ArrayList<Node> openList = new ArrayList<>();
+    ArrayList<Node> checkedList = new ArrayList<>();
+
+    //OTHERS
+    boolean goalReached = false;
+    int step = 0;
 
 
     public DemoPanel () {
@@ -20,6 +27,8 @@ public class DemoPanel extends JPanel {
         this.setPreferredSize(new Dimension(screenWidth, screenHeight));
         this.setBackground(Color.black);
         this.setLayout (new GridLayout(maxRow, maxCol));
+        this.addKeyListener(new KeyHandler(this));
+        this.setFocusable(true);
 
         //PLACE NODES
         int col = 0;
@@ -54,6 +63,9 @@ public class DemoPanel extends JPanel {
         setSolidNode(11,7);
         setSolidNode(12,7);
         setSolidNode(6,1);
+
+        //SET COST
+        setCostOnNodes();
     }
 
     private void setStartNode (int col, int row) {
@@ -69,5 +81,176 @@ public class DemoPanel extends JPanel {
 
     private void setSolidNode (int col, int row) {
         node[col][row].setAsSolid();
+    }
+
+    private void setCostOnNodes () {
+
+        int col = 0;
+        int row = 0;
+
+        while (col < maxCol && row < maxRow) {
+            getCost(node[col][row]);
+            col++;
+            if(col == maxCol) {
+                col = 0;
+                row++;
+            }
+        }
+    }
+
+    private void getCost (Node node) {
+        // GET G COST (The distance from the start node)
+        int xDistance = Math.abs(node.col - startNode.col);
+        int yDistance = Math.abs(node.row - startNode.row);
+        node.gCost = xDistance + yDistance;
+
+        // GET H COST (The distance between the goal and current node)
+        xDistance = Math.abs(node.col - goalNode.col);
+        yDistance = Math.abs(node.row - goalNode.row);
+        node.hCost = xDistance + yDistance;
+
+        //GET F COST (Total cost)
+        node.fCost = node.gCost +node.hCost;
+
+        //DISPLAY COST ON NODE
+        if(node != startNode && node != goalNode) {
+            node.setText("<html>F:" + node.fCost + "<br>G:" + node.gCost + "</html>");
+        }
+    }
+
+    public void search () {
+
+        if(goalReached == false && step < 300) {
+
+            int col = currentNode.col;
+            int row = currentNode.row;
+
+            currentNode.setAsChecked();
+            checkedList.add(currentNode);
+            openList.remove(currentNode);
+
+            //OPEN THE UP NODE
+            if (row - 1 >= 0) {
+                openNode(node[col][row - 1]);
+            }
+            //OPEN THE LEFT NODE
+            if (col - 1 >= 0) {
+                openNode(node[col - 1][row]);
+            }
+            //OPEN THE BOTTOM NODE
+            if (row + 1 < maxRow) {
+                openNode(node[col][row + 1]);
+            }
+            //OPEN THE RIGHT NODE
+            if (col + 1 < maxCol) {
+                openNode(node[col + 1][row]);
+            }
+
+            //FIND THE BEST NODE
+            int bestNodeIndex = 0;
+            int bestNodefCost = 999;
+
+            //Check if this node's F cost is better
+            for (int i = 0; i < openList.size(); i++) {
+                if (openList.get(i).fCost < bestNodefCost) {
+                    bestNodeIndex = i;
+                    bestNodefCost = openList.get(i).fCost;
+                }
+                // F cost is equal, check the G cost
+                else if (openList.get(i).fCost == bestNodefCost) {
+                    if (openList.get(i).gCost < openList.get(bestNodeIndex).gCost) {
+                        bestNodeIndex = 1;
+                    }
+                }
+            }
+            //After the loop, we get the best node which is our next step
+            currentNode = openList.get(bestNodeIndex);
+
+            if(currentNode == goalNode) {
+                goalReached = true;
+            }
+        }
+        step++;
+    }
+
+    public void autoSearch () {
+
+        while(goalReached == false && step < 300) {
+
+            int col = currentNode.col;
+            int row = currentNode.row;
+
+            currentNode.setAsChecked();
+            checkedList.add(currentNode);
+            openList.remove(currentNode);
+
+            //OPEN THE UP NODE
+            if (row - 1 >= 0) {
+                openNode(node[col][row - 1]);
+            }
+            //OPEN THE LEFT NODE
+            if (col - 1 >= 0) {
+                openNode(node[col - 1][row]);
+            }
+            //OPEN THE BOTTOM NODE
+            if (row + 1 < maxRow) {
+                openNode(node[col][row + 1]);
+            }
+            //OPEN THE RIGHT NODE
+            if (col + 1 < maxCol) {
+                openNode(node[col + 1][row]);
+            }
+
+            //FIND THE BEST NODE
+            int bestNodeIndex = 0;
+            int bestNodefCost = 999;
+
+            //Check if this node's F cost is better
+            for (int i = 0; i < openList.size(); i++) {
+                if (openList.get(i).fCost < bestNodefCost) {
+                    bestNodeIndex = i;
+                    bestNodefCost = openList.get(i).fCost;
+                }
+                // F cost is equal, check the G cost
+                else if (openList.get(i).fCost == bestNodefCost) {
+                    if (openList.get(i).gCost < openList.get(bestNodeIndex).gCost) {
+                        bestNodeIndex = 1;
+                    }
+                }
+            }
+            //After the loop, we get the best node which is our next step
+            currentNode = openList.get(bestNodeIndex);
+
+            if(currentNode == goalNode) {
+                goalReached = true;
+                trackThePath();
+            }
+        }
+        step++;
+    }
+
+    private void openNode (Node node) {
+
+        if (node.open == false && node.checked == false && node.solid == false) {
+
+            //If the node is not opened yet, add it to the open list
+            node.setAsOpen();
+            node.parent = currentNode;
+            openList.add(node);
+        }
+    }
+
+    private void trackThePath() {
+
+        //Baktrack and draw the best path
+        Node current = goalNode;
+
+        while (current != startNode) {
+            current = current.parent;
+
+            if(current != startNode) {
+                current.setAsPath();
+            }
+        }
     }
 }
